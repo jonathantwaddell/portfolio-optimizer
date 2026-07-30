@@ -1,5 +1,6 @@
 #Import Backend Functions
 from backend import *
+from backend import backtest_portfolio, plot_backtest
 import streamlit as st
 
 def main():
