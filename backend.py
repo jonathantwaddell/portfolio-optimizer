@@ -174,14 +174,6 @@ def efficient_frontier(mu, Sigma, n_points=50):
 
     return frontier_returns, frontier_vols, frontier_weights
 
-import numpy as np
-import plotly.graph_objects as go
-
-
-import numpy as np
-import plotly.graph_objects as go
-
-
 def plot_efficient_frontier(
     mu,
     Sigma,
@@ -545,4 +537,80 @@ def calculate_statistics(prices):
     Sigma = returns.cov() * 252
 
     return mu.to_numpy(), Sigma.to_numpy(), list(prices.columns)
+
+
+def backtest_portfolio(weights, period):
+
+    tickers = list(weights.index)
+    prices = get_stock_data(tickers, period)
+    returns = prices.pct_change().dropna()
+
+    portfolio_returns = returns @ weights.values
+
+    n = len(tickers)
+    equal_weights = np.ones(n) / n
+    equal_returns = returns @ equal_weights
+
+    portfolio_value = 1000 * (1 + portfolio_returns).cumprod()
+    equal_value = 1000 * (1 + equal_returns).cumprod()
+
+    result = pd.DataFrame({
+        "Optimized Portfolio": portfolio_value,
+        "Equal Weight Portfolio": equal_value
+    })
+
+    return result
+
+
+def plot_backtest(backtest_df):
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=backtest_df.index,
+            y=backtest_df["Optimized Portfolio"],
+            mode="lines",
+            name="Optimized Portfolio",
+            line=dict(width=2),
+            hovertemplate=(
+                "Date: %{x}<br>"
+                "Value: $%{y:.2f}"
+                "<extra></extra>"
+            )
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=backtest_df.index,
+            y=backtest_df["Equal Weight Portfolio"],
+            mode="lines",
+            name="Equal Weight Portfolio",
+            line=dict(width=2, dash="dash"),
+            hovertemplate=(
+                "Date: %{x}<br>"
+                "Value: $%{y:.2f}"
+                "<extra></extra>"
+            )
+        )
+    )
+
+    fig.update_layout(
+        title="Backtest: $1,000 Portfolio Value Over Time",
+        xaxis_title="Date",
+        yaxis_title="Portfolio Value ($)",
+        template="plotly_white",
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=60, r=30, t=80, b=60)
+    )
+
+    return fig
 

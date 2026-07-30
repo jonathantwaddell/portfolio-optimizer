@@ -110,6 +110,31 @@ def main():
                     Sigma
                 )
 
+        st.session_state.optimized = True
+        st.session_state.weights = weights
+        st.session_state.symbols = symbols
+        st.session_state.ret = ret
+        st.session_state.vol = vol
+        st.session_state.sharpe = sharpe
+        st.session_state.mu = mu
+        st.session_state.Sigma = Sigma
+        st.session_state.tickers = tickers
+        st.session_state.problem_type = problem_type
+        st.session_state.weights_series = pd.Series(weights, index=symbols)
+        st.rerun()
+
+    if st.session_state.get("optimized"):
+        weights = st.session_state.weights
+        symbols = st.session_state.symbols
+        ret = st.session_state.ret
+        vol = st.session_state.vol
+        sharpe = st.session_state.sharpe
+        mu = st.session_state.mu
+        Sigma = st.session_state.Sigma
+        tickers = st.session_state.tickers
+        problem_type = st.session_state.problem_type
+        weights_series = st.session_state.weights_series
+
         # -------------------------
         # RESULTS
         # -------------------------
@@ -139,12 +164,12 @@ def main():
         # ALLOCATION
         # -------------------------
 
-        portfolio = pd.DataFrame({
+        portfolio_df = pd.DataFrame({
             "Stock": symbols,
             "Allocation": weights
         })
 
-        portfolio = portfolio.sort_values(
+        portfolio_df = portfolio_df.sort_values(
             "Allocation",
             ascending=False
         )
@@ -152,7 +177,7 @@ def main():
         st.subheader("Portfolio Allocation")
 
         st.dataframe(
-            portfolio.style.format({
+            portfolio_df.style.format({
                 "Allocation": "{:.2%}"
             }),
             hide_index=True
@@ -183,5 +208,44 @@ def main():
         corr_matrix = plot_corr_matrix(Sigma, tickers)
         st.plotly_chart(fig, use_container_width=True)
         st.plotly_chart(corr_matrix, use_container_width=True)
+
+        # -------------------------
+        # BACKTESTING
+        # -------------------------
+
+        st.divider()
+        st.header("Backtest Portfolio")
+
+        backtest_period = st.selectbox(
+            "Backtest Period",
+            ["1y", "2y", "5y", "10y", "ytd", "max"],
+            key="backtest_period"
+        )
+
+        if st.button("Run Backtest", type="secondary"):
+
+            with st.spinner("Running backtest..."):
+
+                backtest_data = backtest_portfolio(
+                    weights_series,
+                    backtest_period
+                )
+
+            backtest_fig = plot_backtest(backtest_data)
+            st.plotly_chart(backtest_fig, use_container_width=True)
+
+            final_opt = backtest_data["Optimized Portfolio"].iloc[-1]
+            final_equal = backtest_data["Equal Weight Portfolio"].iloc[-1]
+
+            col1, col2 = st.columns(2)
+            col1.metric(
+                "Optimized Portfolio Final Value",
+                f"${final_opt:.2f}"
+            )
+            col2.metric(
+                "Equal Weight Portfolio Final Value",
+                f"${final_equal:.2f}"
+            )
+
 if __name__ == '__main__':
     main()
